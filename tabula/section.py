@@ -42,6 +42,7 @@ class Section(object):
         self.show_col_hdr_in_cell = show_col_hdr_in_cell
         self.arr = None
         self.irt = {}           # inverted-row-table @dict {row_name: row_num}
+        self._create()
 
     def __repr__(self):
         return "Section(name=%r, width=%r, height=%r, sep=%r, "\
@@ -173,6 +174,17 @@ class Section(object):
         self.arr = np.delete(self.arr, row_num)
         self.irt.update(
             {k:v-1 for k,v in self.irt.iteritems() if v > row_num})
+
+        return True
+
+    def _create(self):
+
+        if not self.arr is None:
+            logging.error(
+                "unable to create table %s: already exist" % self.name)
+            return False
+
+        self.arr = np.array([], dtype=[(self.name, "S50")])
 
         return True
 
