@@ -144,8 +144,8 @@ class Section(object):
         try:
             self._add_cell(val, row, col)
         except ValueError:
-            logging.error("unable to add val %s to [%s,%s]: "\
-                "not a compatible data type" % (val, row, col))
+            logging.error("unable to add val %s to [%s,%s]: "
+                          "not a compatible data type" % (val, row, col))
             return False
 
         return True
@@ -161,14 +161,12 @@ class Section(object):
     def del_row(self, name):
 
         if self.arr is None:
-            logging.error(
-                "unable to delete row %s: empty section" % name)
+            logging.error("unable to delete row %s: empty section" % name)
             return False
 
         if not name in self._get_row_hdrs() or\
            not name in self.irt:
-            logging.error(
-                "unable to delete row %s: row doesn't exist" % name)
+            logging.error("unable to delete row %s: row doesn't exist" % name)
             return False
 
         row_num = self.irt[name]
@@ -197,13 +195,11 @@ class Section(object):
     def _expand_col(self, name, type="int32"):
 
         if self.arr is None:
-            logging.error(
-                "unable to add column %s: empty section" % name)
+            logging.error("unable to add column %s: empty section" % name)
             return False
 
         if name in self._get_col_hdrs():
-            logging.error(
-                "unable to add column %s: already exist" % name)
+            logging.error("unable to add column %s: already exist" % name)
             return False
 
         new_dtype = self.arr.dtype.descr + [(name, type)]
@@ -218,13 +214,11 @@ class Section(object):
     def _expand_row(self, name):
 
         if self.arr is None:
-            logging.error(
-                "unable to add row %s: empty section" % name)
+            logging.error("unable to add row %s: empty section" % name)
             return False
 
         if name in self._get_row_hdrs():
-            logging.error(
-                "unable to add row %s: already exist" % name)
+            logging.error("unable to add row %s: already exist" % name)
             return False
 
         n_rows = len(self.arr)
@@ -239,16 +233,14 @@ class Section(object):
         @except ValueError : data type not compatible
         """
         if self.arr is None:
-            logging.error(
-                "unable to add value %s to [%s,%s]: empty section"
-                % (val, row, col))
+            logging.error("unable to add value %s to [%s,%s]: empty section"
+                          % (val, row, col))
             return False
 
         if not row in self._get_row_hdrs() or\
-            not row in self.irt:
-            logging.error(
-                "unable to add value %s to [%s,%s]: row doesn't exist"
-                % (val, row, col))
+                not row in self.irt:
+            logging.error("unable to add value %s to [%s,%s]: row doesn't exist"
+                          % (val, row, col))
             return False
 
         if not col in self._get_col_hdrs():
