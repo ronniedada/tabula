@@ -9,7 +9,7 @@ class Section(object):
 
     e.g:
 
-    - Flat section: format(_
+    - Flat section:
         key1: val1, key2: val2
         key3: val3 ...
 
@@ -76,7 +76,7 @@ class Section(object):
             widths = [max(len(str(col))
                 for col in self.arr[hdr].tolist() + [hdr]) for hdr in c_hdrs]
         else:
-            widths = [max(len(str(col)) + len(hdr) + 1
+            widths = [max(len(str(col))
                 for col in self.arr[hdr].tolist()) for hdr in c_hdrs]
 
         if self.show_col_hdr_in_cell:
