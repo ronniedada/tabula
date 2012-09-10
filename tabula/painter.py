@@ -19,7 +19,6 @@ class BlessingPainter(object):
         Invoke before printing out anything.
         This method should be replaced by or merged to blessings package
         """
-        print 'enter fullscreen'
         self.term.stream.write(self.term.enter_fullscreen)
         self.term.stream.write(self.term.hide_cursor)
 
@@ -39,6 +38,8 @@ class BlessingPainter(object):
         if not isinstance(tbl, Table):
             logging.error("unable to paint table: invalid object")
             return False
+
+        self.term.stream.write(self.term.clear)
 
         self.term.stream.write(str(tbl))
         return True
