@@ -2,6 +2,7 @@
 
 import logging
 import numpy as np
+import os
 
 class Section(object):
     """
@@ -23,15 +24,15 @@ class Section(object):
     """
     def __init__(self, name, width=800, height=600, sep="  ",
                  show_row_hdrs=True, show_col_hdrs=True,
-                 show_col_hdr_in_cell=False):
+                 show_col_hdr_in_cell=False, auto_resize=True):
         """
-        @param width : max width
+        @param width : max width, use terminal width auto_resize is on
         @param height: max height
 
         @param show_row_hdrs : show row headers
         @param show_col_hdrs : show column headers
         @param show_col_hdr_in_cell : embed column header in each cell
-
+        @param auto_resize : auto resize according to the size of terminal
         """
         self.name = name
         self.width = width
@@ -40,6 +41,7 @@ class Section(object):
         self.show_row_hdrs = show_row_hdrs
         self.show_col_hdrs = show_col_hdrs
         self.show_col_hdr_in_cell = show_col_hdr_in_cell
+        self.auto_resize = auto_resize
         self.arr = None
         self.irt = {}           # inverted-row-table @dict {row_name: row_num}
         self._create()
@@ -55,10 +57,21 @@ class Section(object):
     def __str__(self):
         return self._format()[0]
 
+    def _term_size(self):
+        """
+        Retrieve the size of the terminal
+
+        @return [width, height]
+        """
+        return list(reversed(os.popen('stty size', 'r').read().split()))
+
     def _format(self):
 
         if self.arr is None:
             return "", 0, 0
+
+        if self.auto_resize:
+            self.width = int(self._term_size()[0])
 
         if self.show_row_hdrs:
             arr = self.arr.tolist()
@@ -88,8 +101,8 @@ class Section(object):
                 str(col).ljust(width) for col, width in zip(row, widths))
             for row in arr)
 
-        return string,\
-               sum(widths) + (len(widths) - 1) * len(self.sep),\
+        return self.wrap(string, self.width),\
+               min(self.width, sum(widths) + (len(widths) - 1) * len(self.sep)),\
                len(arr)
 
     def format(self):
@@ -102,14 +115,40 @@ class Section(object):
         """
         return self._format()
 
-    def config(self, show_row_hdrs=True,
-               show_col_hdrs=True, show_col_hdr_in_cell=False):
+    def wrap(self, string, width):
+        """
+        Wrap lines according to width
+        Place '\n' whenever necessary
+        """
+        if not string or width <= 0:
+            logging.error("invalid string: %s or width: %s" % (string, width))
+            return False
+
+        tmp = ""
+        for line in string.splitlines():
+            if len(line) <= width:
+                tmp += line + "\n"
+                continue
+
+            cur = 0
+            length = len(line)
+            while cur + width < length:
+                cur = line[:cur+width].rfind(self.sep) + len(self.sep) - 1
+                line = line[:cur] + "\n" + line[cur+1:]
+
+            tmp += line + "\n\n"
+
+        return tmp
+
+    def config(self, show_row_hdrs=True, show_col_hdrs=True,
+                show_col_hdr_in_cell=False, auto_resize=True):
         """
         Override the in-class params:
 
         @param show_row_hdrs : show row headers
         @param show_col_hdrs : show column headers
         @param show_col_hdr_in_cell : embed column header in each cell
+        @param auto_resize : auto resize according to the size of terminal
         """
         self.show_row_hdrs = show_row_hdrs
         self.show_col_hdrs = show_col_hdrs
