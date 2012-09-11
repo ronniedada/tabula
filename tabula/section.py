@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 
 import logging
-import numpy as np
 import os
+import ast
+
+import numpy as np
+
 
 class Section(object):
     """
@@ -43,6 +46,7 @@ class Section(object):
         self.show_col_hdr_in_cell = show_col_hdr_in_cell
         self.auto_resize = auto_resize
         self.arr = None
+        self.meta = None
         self.irt = {}           # inverted-row-table @dict {row_name: row_num}
         self._create()
 
@@ -161,7 +165,7 @@ class Section(object):
         return self._format()[1:]
 
     def add_cell(self, row="unknown", col="unknown",
-                 val="unknown", type="int32"):
+                 val="unknown", type="int32", meta=""):
         """
         Add/update a val on cell [row, col]
 
@@ -169,10 +173,13 @@ class Section(object):
 
         @param row : row header name
         @param col : column header name
+        @param meta: meta data to control data display
         """
         if self.arr is None:
             self.arr = np.array(
                 [(row, val)], dtype=[ (self.name, "S50"), (col, type)])
+            self.meta = np.array(
+                [(row, val)], dtype=[ (self.name, "S512"), (col, type)])
             self.irt[row] = 0
 
         if not row in self._get_row_hdrs():
@@ -182,7 +189,7 @@ class Section(object):
             self._expand_col(col, type)
 
         try:
-            self._add_cell(val, row, col)
+            self._add_cell(val, row, col, meta)
         except ValueError:
             logging.error("unable to add val %s to [%s,%s]: "
                           "not a compatible data type" % (val, row, col))
@@ -211,6 +218,7 @@ class Section(object):
 
         row_num = self.irt[name]
         self.arr = np.delete(self.arr, row_num)
+        self.meta = np.delete(self.meta, row_num)
         self.irt.update(
             {k:v-1 for k,v in self.irt.iteritems() if v > row_num})
 
@@ -224,8 +232,33 @@ class Section(object):
             return False
 
         self.arr = np.array([], dtype=[(self.name, "S50")])
+        self.meta = np.array([], dtype=[(self.name, "S512")])
 
         return True
+
+    def _get_meta(self, row, col):
+        """
+        Get metadata for a particular cell
+        """
+        if self.meta is None:
+            logging.error("unable to get meta: empty section")
+            return {}
+
+        if not row in self._get_row_hdrs() or\
+            not col in self._get_col_hdrs():
+            logging.error("unable to get meta: cell [%s,%s] does not exist"
+                          % (row, col))
+            return {}
+
+        meta_str = self.meta[col][self.irt[row]]
+        try:
+            meta = ast.literal_eval(meta_str)
+            if isinstance(meta, dict):
+                return meta
+        except (SyntaxError, ValueError), e:
+            print "unable to parse meta string - %s: %s" % (meta_str, e)
+
+        return {}
 
     def _get_col_hdrs(self):
 
@@ -253,13 +286,18 @@ class Section(object):
             logging.error("unable to add column %s: already exist" % name)
             return False
 
-        new_dtype = self.arr.dtype.descr + [(name, type)]
-        new_arr = np.zeros(self.arr.shape, dtype=new_dtype)
+        arr_dtype = self.arr.dtype.descr + [(name, type)]
+        new_arr = np.zeros(self.arr.shape, dtype=arr_dtype)
+        meta_dtype = self.meta.dtype.descr + [(name, "S512")]
+        new_meta = np.zeros(self.meta.shape, dtype=meta_dtype)
 
         for field in self.arr.dtype.fields:
             new_arr[field] = self.arr[field]
+        for field in self.meta.dtype.fields:
+            new_meta[field] = self.meta[field]
 
         self.arr = new_arr
+        self.meta = new_meta
         return True
 
     def _expand_row(self, name):
@@ -274,12 +312,13 @@ class Section(object):
 
         n_rows = len(self.arr)
         self.arr = np.insert(self.arr, n_rows, np.array([name,]), 0)
+        self.meta = np.insert(self.meta, n_rows, np.array([name,]), 0)
 
         self.irt[name] = n_rows
 
         return True
 
-    def _add_cell(self, val, row, col):
+    def _add_cell(self, val, row, col, meta=""):
         """
         @except ValueError : data type not compatible
         """
@@ -301,5 +340,6 @@ class Section(object):
             return False
 
         self.arr[self.irt[row]][col] = val
+        self.meta[self.irt[row]][col] = str(meta)
 
         return True
