@@ -6,6 +6,7 @@ import ast
 
 import numpy as np
 
+UNITS_SUFFIX = ["", "K", "M", "G", "T"]
 
 class Section(object):
     """
@@ -69,6 +70,30 @@ class Section(object):
         """
         return list(reversed(os.popen('stty size', 'r').read().split()))
 
+    def _conv_units(self, val, units):
+        """
+        Format and convert units to be more human readable
+
+        @return new val with converted units
+        """
+        if not val or not units:
+            return val
+
+        suf = 0
+        if units in ["bytes", "items"]:
+            try:
+                val = float(val)
+            except ValueError:
+                logging.error("unable to apply convert units for %s" % val)
+                return val
+
+            while val > 1024 and suf < 4:
+                val /= 1024
+                suf += 1
+            return "%.2f%s" % (val, UNITS_SUFFIX[suf])
+
+        return val
+
     def _format(self):
 
         if self.arr is None:
@@ -76,6 +101,8 @@ class Section(object):
 
         if self.auto_resize:
             self.width = int(self._term_size()[0])
+
+        self.apply_meta()
 
         if self.show_row_hdrs:
             arr = self.arr.tolist()
@@ -143,6 +170,18 @@ class Section(object):
             tmp += line + "\n\n"
 
         return tmp
+
+    def apply_meta(self):
+        """
+        Apply metadata to help formatting the output
+        """
+        for col in self._get_col_hdrs():
+            for row in self._get_row_hdrs():
+                meta = self._get_meta(row, col)
+                if "units" in meta:
+                    self.arr[col][self.irt[row]] = \
+                        self._conv_units(self.arr[col][self.irt[row]],
+                                         meta["units"])
 
     def config(self, show_row_hdrs=True, show_col_hdrs=True,
                 show_col_hdr_in_cell=False, auto_resize=True):
@@ -256,7 +295,8 @@ class Section(object):
             if isinstance(meta, dict):
                 return meta
         except (SyntaxError, ValueError), e:
-            print "unable to parse meta string - %s: %s" % (meta_str, e)
+            logging.error("unable to parse meta string - %s: %s"
+                          % (meta_str, e))
 
         return {}
 
