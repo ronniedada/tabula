@@ -7,6 +7,7 @@ import ast
 import numpy as np
 
 UNITS_SUFFIX = ["", "K", "M", "G", "T"]
+TYPE_META = "S512"
 
 class Section(object):
     """
@@ -218,7 +219,7 @@ class Section(object):
             self.arr = np.array(
                 [(row, val)], dtype=[ (self.name, "S50"), (col, type)])
             self.meta = np.array(
-                [(row, val)], dtype=[ (self.name, "S512"), (col, type)])
+                [(row, val)], dtype=[ (self.name, TYPE_META), (col, type)])
             self.irt[row] = 0
 
         if not row in self._get_row_hdrs():
@@ -271,7 +272,7 @@ class Section(object):
             return False
 
         self.arr = np.array([], dtype=[(self.name, "S50")])
-        self.meta = np.array([], dtype=[(self.name, "S512")])
+        self.meta = np.array([], dtype=[(self.name, TYPE_META)])
 
         return True
 
@@ -328,7 +329,7 @@ class Section(object):
 
         arr_dtype = self.arr.dtype.descr + [(name, type)]
         new_arr = np.zeros(self.arr.shape, dtype=arr_dtype)
-        meta_dtype = self.meta.dtype.descr + [(name, "S512")]
+        meta_dtype = self.meta.dtype.descr + [(name, TYPE_META)]
         new_meta = np.zeros(self.meta.shape, dtype=meta_dtype)
 
         for field in self.arr.dtype.fields:
