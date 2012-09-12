@@ -103,6 +103,8 @@ class Section(object):
         if self.auto_resize:
             self.width = int(self._term_size()[0])
 
+        self.sort()
+
         self.apply_meta()
 
         if self.show_row_hdrs:
@@ -203,6 +205,16 @@ class Section(object):
         Return the viewable size of the section as @tuple (width, height)
         """
         return self._format()[1:]
+
+    def sort(self, col=None):
+        if self.arr is None:
+            logging.error("unable to sort empty section")
+            return False
+
+        if not col or col not in self._get_col_hdrs():
+            self.arr = np.sort(self.arr, order=self._get_col_hdrs()[1:])
+        else:
+            self.arr = np.sort(self.arr, order=col)
 
     def add_cell(self, row="unknown", col="unknown",
                  val="unknown", type="int32", meta=""):
