@@ -26,8 +26,9 @@ class Table(object):
 
     def __str__(self):
         div = "\n%s\n" % (self.sep * self.size()[0])
-        return div.join(
-            map(lambda x: str(x), self.sections.itervalues()))
+        return div.join(map(lambda x: str(x),
+                        sorted(self.sections.itervalues(),
+                               key=lambda y: y.id)))
 
     def __repr__(self):
         return "Table(name=%r, sections=%r, hori=%r)"\

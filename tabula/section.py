@@ -27,10 +27,11 @@ class Section(object):
         row2 |  val3 |  val4
 
     """
-    def __init__(self, name, width=800, height=600, sep="  ",
+    def __init__(self, name, id=0, width=800, height=600, sep="  ",
                  show_row_hdrs=True, show_col_hdrs=True,
                  show_col_hdr_in_cell=False, auto_resize=True):
         """
+        @param id: id/position to place a section on the table
         @param width : max width, use terminal width auto_resize is on
         @param height: max height
 
@@ -40,6 +41,7 @@ class Section(object):
         @param auto_resize : auto resize according to the size of terminal
         """
         self.name = name
+        self.id = id
         self.width = width
         self.height = height
         self.sep = sep
