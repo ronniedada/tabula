@@ -82,20 +82,21 @@ class Section(object):
         if not val or not units:
             return val
 
+        try:
+            val = float(val)
+        except ValueError:
+            logging.error("unable to apply convert units for %s" % val)
+            return val
+
         suf = 0
         if units in ["bytes", "items"]:
-            try:
-                val = float(val)
-            except ValueError:
-                logging.error("unable to apply convert units for %s" % val)
-                return val
 
             while val > 1024 and suf < 4:
                 val /= 1024
                 suf += 1
             return "%.2f%s" % (val, UNITS_SUFFIX[suf])
 
-        return val
+        return "%.2f" % val
 
     def _format(self):
 
