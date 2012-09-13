@@ -115,36 +115,35 @@ class Section(object):
             return ""
 
         if self.show_row_hdrs:
-            arr = arr.tolist()
+            data = arr.tolist()
             c_hdrs = self._get_col_hdrs()
         else:
-            arr = [row[1:] for row in arr.tolist()]
+            data = [row[1:] for row in arr.tolist()]
             c_hdrs = self._get_col_hdrs()[1:]
 
         if self.show_col_hdr_in_cell:
-            arr = [map(lambda (hdr, col): ": ".join([hdr, str(col)]),
-                   zip(c_hdrs, row)) for row in arr]
+            data = [map(lambda (hdr, col): ": ".join([hdr, str(col)]),
+                    zip(c_hdrs, row)) for row in data]
 
         if self.show_col_hdrs:
-            arr = [c_hdrs] + arr
+            data = [c_hdrs] + data
             widths = [max(len(str(col))
-                for col in self.arr[hdr].tolist() + [hdr]) for hdr in c_hdrs]
+                for col in arr[hdr].tolist() + [hdr]) for hdr in c_hdrs]
         else:
             widths = [max(len(str(col))
-                for col in self.arr[hdr].tolist()) for hdr in c_hdrs]
+                for col in arr[hdr].tolist()) for hdr in c_hdrs]
 
         if self.show_col_hdr_in_cell:
             widths = map(
                 lambda (width, hdr): width + len(hdr) + 1, zip(widths, c_hdrs))
 
-        string= "\n".join(
-            self.sep.join(
-                str(col).ljust(width) for col, width in zip(row, widths))
-            for row in arr)
+        string= "\n".join(self.sep.join(str(col).ljust(width)
+                                        for col, width in zip(row, widths))
+                                        for row in data)
 
         return self.wrap(string, self.width),\
                min(self.width, sum(widths) + (len(widths) - 1) * len(self.sep)),\
-               len(arr)
+               len(data)
 
     def format(self):
         """
