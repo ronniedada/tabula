@@ -25,14 +25,11 @@ def conv_units(val, meta):
         return val
 
     suf = 0
-    if meta in ["bytes", "items"]:
+    while val > 1024 and suf < 4:
+        val /= 1024
+        suf += 1
 
-        while val > 1024 and suf < 4:
-            val /= 1024
-            suf += 1
-        return "%.2f%s" % (val, UNITS_SUFFIX[suf])
-
-    return "%.2f" % val
+    return "%.2f%s" % (val, UNITS_SUFFIX[suf])
 
 META_FUNCS = {"units": conv_units}
 
