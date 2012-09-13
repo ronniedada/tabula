@@ -111,15 +111,17 @@ class Section(object):
         if self.auto_resize:
             self.width = int(self._term_size()[0])
 
-        self.sort()
+        arr = self.apply_meta(self.arr)
+        arr = self.sort(arr)
 
-        self.apply_meta()
+        if arr is None:
+            return ""
 
         if self.show_row_hdrs:
-            arr = self.arr.tolist()
+            arr = arr.tolist()
             c_hdrs = self._get_col_hdrs()
         else:
-            arr = [row[1:] for row in self.arr.tolist()]
+            arr = [row[1:] for row in arr.tolist()]
             c_hdrs = self._get_col_hdrs()[1:]
 
         if self.show_col_hdr_in_cell:
@@ -182,17 +184,23 @@ class Section(object):
 
         return tmp
 
-    def apply_meta(self):
+    def apply_meta(self, arr):
         """
         Apply metadata to help formatting the output
         """
+        if arr is None:
+            logging.error("unable to apply meta: emtpy section")
+            return None
+
+        tmp = np.copy(arr)
         for col in self._get_col_hdrs():
             for row in self._get_row_hdrs():
                 meta = self._get_meta(row, col)
                 for mk, mv in meta.iteritems():
                     if mk in self.meta_funcs.iterkeys():
-                        self.arr[col][self.irt[row]] = \
-                            self.meta_funcs[mk](self.arr[col][self.irt[row]], mv)
+                        tmp[col][self.irt[row]] = \
+                            self.meta_funcs[mk](tmp[col][self.irt[row]], mv)
+        return tmp
 
     def config(self, show_row_hdrs=True, show_col_hdrs=True,
                 show_col_hdr_in_cell=False, auto_resize=True):
@@ -214,15 +222,15 @@ class Section(object):
         """
         return self._format()[1:]
 
-    def sort(self, col=None):
-        if self.arr is None:
+    def sort(self, arr, col=None):
+        if arr is None:
             logging.error("unable to sort empty section")
             return None
 
         if not col or col not in self._get_col_hdrs():
-            return np.sort(self.arr, order=self._get_col_hdrs()[1:])
+            return np.sort(arr, order=self._get_col_hdrs()[1:])
         else:
-            return np.sort(self.arr, order=col)
+            return np.sort(arr, order=col)
 
     def add_cell(self, row="unknown", col="unknown",
                  val="unknown", type="int32", meta=""):
