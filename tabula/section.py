@@ -193,7 +193,7 @@ class Section(object):
         for col in self._get_col_hdrs():
             for row in self._get_row_hdrs():
                 meta = self._get_meta(row, col)
-                for mk, mv in meta.iteritems():
+                for mk, mv in sorted(meta.iteritems()):
                     if mk in self.meta_funcs.iterkeys():
                         tmp[col][self.irt[row]] = \
                             self.meta_funcs[mk](tmp[col][self.irt[row]], mv)
