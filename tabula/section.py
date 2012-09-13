@@ -122,7 +122,7 @@ class Section(object):
             c_hdrs = self._get_col_hdrs()[1:]
 
         if self.show_col_hdr_in_cell:
-            arr = [map(lambda (hdr, col): ":".join([hdr, str(col)]),
+            arr = [map(lambda (hdr, col): ": ".join([hdr, str(col)]),
                    zip(c_hdrs, row)) for row in arr]
 
         if self.show_col_hdrs:
