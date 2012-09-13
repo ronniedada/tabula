@@ -9,6 +9,33 @@ import numpy as np
 UNITS_SUFFIX = ["", "K", "M", "G", "T"]
 TYPE_META = "S512"
 
+def conv_units(val, meta):
+    """
+    Format and convert units to be more human readable
+
+    @return new val with converted units
+    """
+    if not val or not meta:
+        return val
+
+    try:
+        val = float(val)
+    except ValueError:
+        logging.error("unable to apply convert units for %s" % val)
+        return val
+
+    suf = 0
+    if meta in ["bytes", "items"]:
+
+        while val > 1024 and suf < 4:
+            val /= 1024
+            suf += 1
+        return "%.2f%s" % (val, UNITS_SUFFIX[suf])
+
+    return "%.2f" % val
+
+META_FUNCS = {"units": conv_units}
+
 class Section(object):
     """
     A section appears on @class Table
@@ -29,7 +56,8 @@ class Section(object):
     """
     def __init__(self, name, id=0, width=800, height=600, sep="  ",
                  show_row_hdrs=True, show_col_hdrs=True,
-                 show_col_hdr_in_cell=False, auto_resize=True):
+                 show_col_hdr_in_cell=False, auto_resize=True,
+                 meta_funcs=META_FUNCS):
         """
         @param id: id/position to place a section on the table
         @param width : max width, use terminal width auto_resize is on
@@ -39,6 +67,7 @@ class Section(object):
         @param show_col_hdrs : show column headers
         @param show_col_hdr_in_cell : embed column header in each cell
         @param auto_resize : auto resize according to the size of terminal
+        @param meta_funcs : func to perform when meta matches
         """
         self.name = name
         self.id = id
@@ -49,6 +78,7 @@ class Section(object):
         self.show_col_hdrs = show_col_hdrs
         self.show_col_hdr_in_cell = show_col_hdr_in_cell
         self.auto_resize = auto_resize
+        self.meta_funcs = meta_funcs
         self.arr = None
         self.meta = None
         self.irt = {}           # inverted-row-table @dict {row_name: row_num}
@@ -72,31 +102,6 @@ class Section(object):
         @return [width, height]
         """
         return list(reversed(os.popen('stty size', 'r').read().split()))
-
-    def _conv_units(self, val, units):
-        """
-        Format and convert units to be more human readable
-
-        @return new val with converted units
-        """
-        if not val or not units:
-            return val
-
-        try:
-            val = float(val)
-        except ValueError:
-            logging.error("unable to apply convert units for %s" % val)
-            return val
-
-        suf = 0
-        if units in ["bytes", "items"]:
-
-            while val > 1024 and suf < 4:
-                val /= 1024
-                suf += 1
-            return "%.2f%s" % (val, UNITS_SUFFIX[suf])
-
-        return "%.2f" % val
 
     def _format(self):
 
@@ -184,10 +189,10 @@ class Section(object):
         for col in self._get_col_hdrs():
             for row in self._get_row_hdrs():
                 meta = self._get_meta(row, col)
-                if "units" in meta:
-                    self.arr[col][self.irt[row]] = \
-                        self._conv_units(self.arr[col][self.irt[row]],
-                                         meta["units"])
+                for mk, mv in meta.iteritems():
+                    if mk in self.meta_funcs.iterkeys():
+                        self.arr[col][self.irt[row]] = \
+                            self.meta_funcs[mk](self.arr[col][self.irt[row]], mv)
 
     def config(self, show_row_hdrs=True, show_col_hdrs=True,
                 show_col_hdr_in_cell=False, auto_resize=True):
@@ -212,12 +217,12 @@ class Section(object):
     def sort(self, col=None):
         if self.arr is None:
             logging.error("unable to sort empty section")
-            return False
+            return None
 
         if not col or col not in self._get_col_hdrs():
-            self.arr = np.sort(self.arr, order=self._get_col_hdrs()[1:])
+            return np.sort(self.arr, order=self._get_col_hdrs()[1:])
         else:
-            self.arr = np.sort(self.arr, order=col)
+            return np.sort(self.arr, order=col)
 
     def add_cell(self, row="unknown", col="unknown",
                  val="unknown", type="int32", meta=""):
