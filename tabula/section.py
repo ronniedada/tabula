@@ -31,7 +31,11 @@ def conv_units(val, meta):
 
     return "%.2f%s" % (val, UNITS_SUFFIX[suf])
 
-META_FUNCS = {"units": conv_units}
+"""CONV_FUNCS: convert data before column alignments"""
+CONV_FUNCS = {"units": conv_units}
+
+"""DECO_FUNCS: decorate data after column alignments"""
+DECO_FUNCS = {}
 
 class Section(object):
     """
@@ -54,7 +58,7 @@ class Section(object):
     def __init__(self, name, id=0, width=800, height=600, sep="  ",
                  show_row_hdrs=True, show_col_hdrs=True,
                  show_col_hdr_in_cell=False, auto_resize=True,
-                 meta_funcs=META_FUNCS):
+                 conv_funcs=CONV_FUNCS, deco_funcs=DECO_FUNCS):
         """
         @param id: id/position to place a section on the table
         @param width : max width, use terminal width auto_resize is on
@@ -64,7 +68,8 @@ class Section(object):
         @param show_col_hdrs : show column headers
         @param show_col_hdr_in_cell : embed column header in each cell
         @param auto_resize : auto resize according to the size of terminal
-        @param meta_funcs : func to perform when meta matches
+        @param conv_funcs : func to convert data before column alignments
+        @param deco_funcs : func to decorate data after column alignments
         """
         self.name = name
         self.id = id
@@ -75,7 +80,8 @@ class Section(object):
         self.show_col_hdrs = show_col_hdrs
         self.show_col_hdr_in_cell = show_col_hdr_in_cell
         self.auto_resize = auto_resize
-        self.meta_funcs = meta_funcs
+        self.conv_funcs = conv_funcs
+        self.deco_funcs = deco_funcs
         self.arr = None
         self.meta = None
         self.irt = {}           # inverted-row-table @dict {row_name: row_num}
@@ -100,6 +106,37 @@ class Section(object):
         """
         return list(reversed(os.popen('stty size', 'r').read().split()))
 
+    def align(self, arr):
+        """
+        Align columns, including column headers
+        """
+        if arr is None:
+            return arr
+
+        c_hdrs = self._get_col_hdrs()
+
+        if self.show_col_hdr_in_cell:
+            for hdr in c_hdrs:
+                arr[hdr] = map(lambda col: ":".join([hdr, str(col)]), arr[hdr])
+
+        if self.show_col_hdrs:
+            widths = [max(len(str(col))
+                      for col in arr[hdr].tolist() + [hdr]) for hdr in c_hdrs]
+        else:
+            widths = [max(len(str(col))
+                      for col in arr[hdr].tolist()) for hdr in c_hdrs]
+
+        # align column headers
+        c_hdrs = map(lambda (c_hdr, width): c_hdr.ljust(width),
+                     zip(c_hdrs, widths))
+
+        # align data
+        for n_row in range(len(arr)):
+            arr[n_row] = tuple(map(lambda (col, width): col.ljust(width),
+                                   zip(arr[n_row], widths)))
+
+        return arr, c_hdrs, widths
+
     def _format(self):
 
         if self.arr is None:
@@ -108,42 +145,38 @@ class Section(object):
         if self.auto_resize:
             self.width = int(self._term_size()[0])
 
-        arr = self.apply_meta(self.arr)
+        arr = self.apply_meta(self.arr, self.conv_funcs)
         arr = self.sort(arr)
 
         if arr is None:
             return ""
 
+        arr, c_hdrs, widths = self.align(arr)
+        arr = self.apply_meta(arr, self.deco_funcs)
+
+        data = arr.tolist()
+        height = len(data)
+
         if self.show_row_hdrs:
-            data = arr.tolist()
-            c_hdrs = self._get_col_hdrs()
+            height += 1
+            if self.show_col_hdrs:
+                string = self.sep.join(c_hdrs) + "\n"
+            else:
+                string = ""
+            string += "\n".join(self.sep.join(col for col in row)
+                                for row in data)
         else:
-            data = [row[1:] for row in arr.tolist()]
-            c_hdrs = self._get_col_hdrs()[1:]
-
-        if self.show_col_hdr_in_cell:
-            data = [map(lambda (hdr, col): ": ".join([hdr, str(col)]),
-                    zip(c_hdrs, row)) for row in data]
-
-        if self.show_col_hdrs:
-            data = [c_hdrs] + data
-            widths = [max(len(str(col))
-                for col in arr[hdr].tolist() + [hdr]) for hdr in c_hdrs]
-        else:
-            widths = [max(len(str(col))
-                for col in arr[hdr].tolist()) for hdr in c_hdrs]
-
-        if self.show_col_hdr_in_cell:
-            widths = map(
-                lambda (width, hdr): width + len(hdr) + 1, zip(widths, c_hdrs))
-
-        string= "\n".join(self.sep.join(str(col).ljust(width)
-                                        for col, width in zip(row, widths))
-                                        for row in data)
+            widths = widths[1:]
+            if self.show_col_hdrs:
+                string = self.sep.join(c_hdrs[1:]) + "\n"
+            else:
+                string = ""
+            string += "\n".join(self.sep.join(col for col in row[1:])
+                                for row in data)
 
         return self.wrap(string, self.width),\
                min(self.width, sum(widths) + (len(widths) - 1) * len(self.sep)),\
-               len(data)
+               height
 
     def format(self):
         """
@@ -180,22 +213,25 @@ class Section(object):
 
         return tmp
 
-    def apply_meta(self, arr):
+    def apply_meta(self, arr, funcs):
         """
-        Apply metadata to help formatting the output
+        Apply metadata to help formatting the output:
+
+        - conv_funcs: convert data before column alignments
+        - deco_funcs: decorate data after column alignments
         """
         if arr is None:
-            logging.error("unable to apply meta: emtpy section")
+            logging.error("unable to convert data: emtpy section")
             return None
 
         tmp = np.copy(arr)
-        for col in self._get_col_hdrs():
+        for col in arr.dtype.names:
             for row in self._get_row_hdrs():
                 meta = self._get_meta(row, col)
                 for mk, mv in sorted(meta.iteritems()):
-                    if mk in self.meta_funcs.iterkeys():
+                    if mk in funcs.iterkeys():
                         tmp[col][self.irt[row]] = \
-                            self.meta_funcs[mk](tmp[col][self.irt[row]], mv)
+                            funcs[mk](tmp[col][self.irt[row]], mv)
         return tmp
 
     def config(self, show_row_hdrs=True, show_col_hdrs=True,
