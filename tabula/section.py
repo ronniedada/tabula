@@ -319,8 +319,9 @@ class Section(object):
         row_num = self.irt[name]
         self.arr = np.delete(self.arr, row_num)
         self.meta = np.delete(self.meta, row_num)
-        self.irt.update(
-            {k:v-1 for k,v in self.irt.iteritems() if v > row_num})
+        for k,v in self.irt.iteritems():
+            if v > row_num:
+                self.irt[k] = v - 1
 
         return True
 
